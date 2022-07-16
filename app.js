@@ -3,6 +3,7 @@ var mongoose   = require('mongoose');
 var bodyParser = require('body-parser');
 var path       = require('path');
 var XLSX       = require('xlsx');
+var async =require('async')
 var multer     = require('multer');
 //multer
 var storage = multer.diskStorage({
@@ -57,23 +58,29 @@ var excelModel = mongoose.model('excelData',excelSchema);
 app.get('/',(req,res)=>{
 res.render('home');
 });
-app.get('/success',(req,res)=>{
-  res.render('success');
-})
+
 app.post('/',upload.single('excel'),(req,res)=>{
   var workbook =  XLSX.readFile(req.file.path,{dateNF:"dd mmm yyyy"});
   var sheet_namelist = workbook.SheetNames;
 
-      var xlData = XLSX.utils.sheet_to_json(workbook.Sheets[sheet_namelist[0]],{raw:false});
-       
-      excelModel.insertMany(xlData,{ordered:false},(err,data)=>{
+    var xlData = XLSX.utils.sheet_to_json(workbook.Sheets[sheet_namelist[0]],{raw:false});
+    
+    async.eachSeries(xlData,  function (element,callback) {
+
+        callback(null,
+          excelModel.insertMany(element,{ordered:false},(err,data)=>{
           if(err){
               console.log(err);
           }else{
               console.log(data);
           }
-      })
-  res.redirect('/success');
+      }));
+       
+       
+      }) 
+      
+     
+    res.render('success');
 });
 
 //assign port
